@@ -1,0 +1,18 @@
+[profile.default]
+solc = "0.8.24"
+src = "src"
+out = "out"
+libs = ["lib"]
+evm_version = "shanghai"
+remappings = [
+  "src/=src/",
+  "oz/=lib/openzeppelin-contracts/contracts/",
+  "upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+  "ccip/=node_modules/@chainlink/contracts-ccip/src/v0.8/ccip/",
+]
+
+[fmt]
+line_length = 79
+tab_width = 2
+number_underscore = "thousands"
+wrap_comments = true
