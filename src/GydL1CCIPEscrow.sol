@@ -25,6 +25,7 @@ contract GydL1CCIPEscrow is
   CCIPReceiverUpgradeable
 {
   using SafeERC20 for IERC20;
+  using Address for address;
   using Address for address payable;
 
   struct ChainMetadata {
@@ -155,16 +156,26 @@ contract GydL1CCIPEscrow is
     emit GasLimitUpdated(chainSelector, gasLimit);
   }
 
-  /**
-   * @notice Bridge GYD from Ethereum mainnet to the specified chain
-   * @param recipient The recipient of the bridged token
-   * @param amount GYD amount
-   */
   function bridgeToken(
     uint64 destinationChainSelector,
     address recipient,
     uint256 amount
   ) external payable virtual {
+    bridgeToken(destinationChainSelector, recipient, amount, "");
+  }
+
+  /**
+   * @notice Bridge GYD from Ethereum mainnet to the specified chain
+   * @param recipient The recipient of the bridged token
+   * @param amount GYD amount
+   * @param data calldata for the recipient on the destination chain
+   */
+  function bridgeToken(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount,
+    bytes memory data
+  ) public payable virtual {
     gyd.safeTransferFrom(msg.sender, address(this), amount);
 
     ChainMetadata memory chainMeta = chainsMetadata[destinationChainSelector];
@@ -173,7 +184,7 @@ contract GydL1CCIPEscrow is
     }
 
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      chainMeta.gydAddress, recipient, amount, chainMeta.gasLimit
+      chainMeta.gydAddress, recipient, amount, data, chainMeta.gasLimit
     );
     uint256 fees = router.getFee(destinationChainSelector, evm2AnyMessage);
     CCIPHelpers.sendCCIPMessage(
@@ -191,13 +202,22 @@ contract GydL1CCIPEscrow is
     address recipient,
     uint256 amount
   ) external view returns (uint256) {
+    return getFee(destinationChainSelector, recipient, amount, "");
+  }
+
+  function getFee(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount,
+    bytes memory data
+  ) public view returns (uint256) {
     ChainMetadata memory chainMeta = chainsMetadata[destinationChainSelector];
     if (chainMeta.gydAddress == address(0)) {
       revert ChainNotSupported(destinationChainSelector);
     }
 
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      chainMeta.gydAddress, recipient, amount, chainMeta.gasLimit
+      chainMeta.gydAddress, recipient, amount, data, chainMeta.gasLimit
     );
     return router.getFee(destinationChainSelector, evm2AnyMessage);
   }
@@ -229,13 +249,16 @@ contract GydL1CCIPEscrow is
       revert MessageInvalid();
     }
 
-    (address recipient, uint256 amount) =
-      abi.decode(any2EvmMessage.data, (address, uint256));
+    (address recipient, uint256 amount, bytes memory data) =
+      abi.decode(any2EvmMessage.data, (address, uint256, bytes));
     uint256 bridged = totalBridgedGYD[any2EvmMessage.sourceChainSelector];
     bridged -= amount;
     totalBridgedGYD[any2EvmMessage.sourceChainSelector] = bridged;
 
     gyd.safeTransfer(recipient, amount);
+    if (data.length > 0) {
+      recipient.functionCall(data);
+    }
 
     emit GYDClaimed(
       any2EvmMessage.sourceChainSelector, recipient, amount, bridged

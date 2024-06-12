@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import {Address} from "oz/utils/Address.sol";
 import {Initializable} from "upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Ownable2StepUpgradeable} from
@@ -24,6 +25,8 @@ contract L2Gyd is
   ERC20Upgradeable,
   CCIPReceiverUpgradeable
 {
+  using Address for address;
+
   /// @notice The CCIP router contract
   IRouterClient public router;
 
@@ -98,19 +101,23 @@ contract L2Gyd is
     revert RenounceInvalid();
   }
 
+  function bridgeToken(address recipient, uint256 amount) public payable {
+    bridgeToken(recipient, amount, "");
+  }
+
   /**
    * @notice Bridge GYD from the current chain to Ethereum mainnet
    * @param recipient The recipient of the bridged token
    * @param amount GYD amount
    */
-  function bridgeToken(address recipient, uint256 amount)
+  function bridgeToken(address recipient, uint256 amount, bytes memory data)
     public
     payable
     virtual
   {
     _burn(msg.sender, amount);
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      destAddress, recipient, amount, bridgeGasLimit
+      destAddress, recipient, amount, data, bridgeGasLimit
     );
     uint256 fees = router.getFee(mainnetChainSelector, evm2AnyMessage);
     CCIPHelpers.sendCCIPMessage(
@@ -125,8 +132,16 @@ contract L2Gyd is
     view
     returns (uint256)
   {
+    return getFee(recipient, amount, "");
+  }
+
+  function getFee(address recipient, uint256 amount, bytes memory data)
+    public
+    view
+    returns (uint256)
+  {
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      destAddress, recipient, amount, bridgeGasLimit
+      destAddress, recipient, amount, data, bridgeGasLimit
     );
     return router.getFee(mainnetChainSelector, evm2AnyMessage);
   }
@@ -154,9 +169,12 @@ contract L2Gyd is
       revert MessageInvalid();
     }
 
-    (address recipient, uint256 amount) =
-      abi.decode(any2EvmMessage.data, (address, uint256));
+    (address recipient, uint256 amount, bytes memory data) =
+      abi.decode(any2EvmMessage.data, (address, uint256, bytes));
     _mint(recipient, amount);
+    if (data.length > 0) {
+      recipient.functionCall(data);
+    }
 
     emit GYDClaimed(recipient, amount, totalSupply());
   }

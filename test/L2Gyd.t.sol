@@ -137,7 +137,7 @@ contract L2GydTest is Test {
 
     // Mint test NativeGYD
     vm.startPrank(address(router));
-    bytes memory data = abi.encode(alice, bridgeAmount);
+    bytes memory data = abi.encode(alice, bridgeAmount, "");
     mockedProxyV1.ccipReceive(
       _receivedMessage(mainnetChainSelector, destAddress, data)
     );
@@ -166,7 +166,7 @@ contract L2GydTest is Test {
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
-    bytes memory data = abi.encode(alice, bridgeAmount);
+    bytes memory data = abi.encode(alice, bridgeAmount, "");
     proxyV1.ccipReceive(
       _receivedMessage(mainnetChainSelector, destAddress, data)
     );
@@ -198,7 +198,7 @@ contract L2GydTest is Test {
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
-    bytes memory data = abi.encode(alice, bridgeAmount);
+    bytes memory data = abi.encode(alice, bridgeAmount, "");
     proxyV1.ccipReceive(
       _receivedMessage(mainnetChainSelector, destAddress, data)
     );
@@ -213,7 +213,7 @@ contract L2GydTest is Test {
     address currentRouterAddress = address(proxyV1.router());
     address originAddress = proxyV1.destAddress();
     uint64 chainSelector = proxyV1.mainnetChainSelector();
-    bytes memory metadata = abi.encode(bob, 1 ether);
+    bytes memory metadata = abi.encode(bob, 1 ether, "");
 
     // Invalid caller
     vm.startPrank(bob);
@@ -253,7 +253,7 @@ contract L2GydTest is Test {
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
-    bytes memory data = abi.encode(alice, bridgeAmount);
+    bytes memory data = abi.encode(alice, bridgeAmount, "");
     proxyV1.ccipReceive(
       _receivedMessage(mainnetChainSelector, destAddress, data)
     );
@@ -268,7 +268,7 @@ contract L2GydTest is Test {
     address currentRouterAddress = address(proxyV1.router());
     address originAddress = proxyV1.destAddress();
     uint64 chainSelector = proxyV1.mainnetChainSelector();
-    bytes memory messageData = abi.encode(bob, bridgeAmount);
+    bytes memory messageData = abi.encode(bob, bridgeAmount, "");
 
     vm.startPrank(currentRouterAddress);
     proxyV1.ccipReceive(
