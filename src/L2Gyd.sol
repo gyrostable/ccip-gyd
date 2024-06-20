@@ -135,7 +135,7 @@ contract L2Gyd is
    * Updates the gas limit when bridging to a chain
    * @param gasLimit the new gas limit for this chain
    */
-  function updateGasLimit(uint256 gasLimit) internal onlyOwner {
+  function updateGasLimit(uint256 gasLimit) external onlyOwner {
     bridgeGasLimit = gasLimit;
     emit GasLimitUpdated(gasLimit);
   }

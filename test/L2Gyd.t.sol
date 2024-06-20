@@ -280,6 +280,15 @@ contract L2GydTest is Test {
     assertEq(proxyV1.totalSupply(), bridgeAmount);
   }
 
+  function testUpdateGasLimit() public {
+    uint256 newGasLimit = 100_000;
+
+    vm.prank(owner);
+    proxyV2.updateGasLimit(newGasLimit);
+
+    assertEq(proxyV2.bridgeGasLimit(), newGasLimit);
+  }
+
   function _receivedMessage(
     uint64 chainSelector,
     address senderContract,

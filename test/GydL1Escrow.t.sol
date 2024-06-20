@@ -273,6 +273,16 @@ contract GydL1EscrowTest is Test {
     assertEq(proxyV1.totalBridgedGYD(arbitrumChainSelector), 0);
   }
 
+  function testUpdateGasLimit() public {
+    uint256 newGasLimit = 100_000;
+
+    vm.prank(admin);
+    proxyV1.updateGasLimit(arbitrumChainSelector, newGasLimit);
+
+    (, uint256 gasLimit_) = proxyV1.chainsMetadata(arbitrumChainSelector);
+    assertEq(gasLimit_, newGasLimit);
+  }
+
   function _receivedMessage(
     uint64 chainSelector,
     address senderContract,
