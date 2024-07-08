@@ -14,9 +14,10 @@ library CCIPHelpers {
     address gydAddress,
     address recipient,
     uint256 amount,
+    bytes memory data,
     uint256 gasLimit
   ) internal pure returns (Client.EVM2AnyMessage memory) {
-    bytes memory messageData = abi.encode(recipient, amount);
+    bytes memory messageData = abi.encode(recipient, amount, data);
     return Client.EVM2AnyMessage({
       receiver: abi.encode(gydAddress),
       data: messageData,

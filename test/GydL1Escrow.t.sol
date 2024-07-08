@@ -210,7 +210,7 @@ contract GydL1EscrowTest is Test {
     address routerAddress = address(proxyV1.router());
     (address originAddress,) = proxyV1.chainsMetadata(arbitrumChainSelector);
     uint64 chainSelector = arbitrumChainSelector;
-    bytes memory data = abi.encode(bob, 1 ether);
+    bytes memory data = abi.encode(bob, 1 ether, "");
 
     // Invalid caller
     vm.startPrank(bob);
@@ -261,7 +261,7 @@ contract GydL1EscrowTest is Test {
     address routerAddress = address(proxyV1.router());
     (address originAddress,) = proxyV1.chainsMetadata(arbitrumChainSelector);
     uint64 chainSelector = arbitrumChainSelector;
-    bytes memory messageData = abi.encode(bob, bridgeAmount);
+    bytes memory messageData = abi.encode(bob, bridgeAmount, "");
 
     vm.startPrank(routerAddress);
     proxyV1.ccipReceive(
