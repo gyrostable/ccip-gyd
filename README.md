@@ -61,11 +61,11 @@ Deployment scripts are located in the [`script`](./script/) directory.
 
 ## Contract addresses
 
-| Smart contract       | Network       | Address                                                                                                                        |
-| -------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| GYD                  | Mainnet       | [0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A](https://etherscan.io/address/0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A)          |
-| CCIP router | Mainnet       | [0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D](https://etherscan.io/address/0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D)          |
-|                      | Arbitrum | [0x141fa059441E0ca23ce184B6A78bafD2A517DdE8](https://arbiscan.io/address/0x141fa059441E0ca23ce184B6A78bafD2A517DdE8) |
-| GydL1CCIPEscrow             | Mainnet       | [0xa1886c8d748DeB3774225593a70c79454B1DA8a6](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6)          |
-| L2Gyd                | Arbitrum | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8) |
+| Smart contract      | Network       | Address                                                                                                                |
+| ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| GYD                 | Mainnet       | [0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A](https://etherscan.io/address/0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A)  |
+| CCIP router         | Mainnet       | [0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D](https://etherscan.io/address/0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D)  |
+|                     | Arbitrum      | [0x141fa059441E0ca23ce184B6A78bafD2A517DdE8](https://arbiscan.io/address/0x141fa059441E0ca23ce184B6A78bafD2A517DdE8)   |
+| GydL1CCIPEscrow     | Mainnet       | [0xa1886c8d748DeB3774225593a70c79454B1DA8a6](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6)  |
+| L2Gyd               | Arbitrum      | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
 
