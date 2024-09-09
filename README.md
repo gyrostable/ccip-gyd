@@ -91,18 +91,21 @@ To indicate the target L2 chain, CCIP does not use chain IDs but instead its own
 
 Assume you want to bridge some given amount AMOUNT from Mainnet to Arbitrum. Let AMOUNT be the  decimal-scaled value (in 18 decimals), e.g., 1000000000000000000 for 1.0 GYD. Let RECIPIENT be the recipient address on Arbitrum.
 
-1. On Mainnet, on GYD, approve AMOUNT to GydL1CCIPEscrow:
+1. On Mainnet, on [GYD](https://etherscan.io/address/0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A), approve AMOUNT to GydL1CCIPEscrow:
     ```
-    [GYD](https://etherscan.io/address/0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A).approve(0xa1886c8d748DeB3774225593a70c79454B1DA8a6, AMOUNT)
+    GYD.approve(0xa1886c8d748DeB3774225593a70c79454B1DA8a6, AMOUNT)
     ```
-2. On Mainnet, on GydL1CCIPEscrow, calculate the fees for bridging (view method).
+2. On Mainnet, on [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6), calculate the fees for bridging (view method).
     ```
-    [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6).getFee(4949039107694359620, RECIPIENT, AMOUNT)
+    GydL1CCIPEscrow.getFee(4949039107694359620, RECIPIENT, AMOUNT)
     ```
     This returns a Wei value of ETH.
     Call the result FEE.
 3. On Mainnet on GydL1CCIPEscrow, initiate the bridging operation:
-    [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6).bridgeToken(4949039107694359620, RECIPIENT, AMOUNT) with payable amount = FEE
+    ```
+    [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6).bridgeToken(4949039107694359620, RECIPIENT, AMOUNT) 
+    ```
+    with payable amount = FEE
     In Etherscan, payable amount shows up as the first “parameter” also called “bridgeToken” and has to be specified in ETH, i.e., FEE / 1e18.
 
 FEE should be on the order of $0.50 equivalent.
@@ -117,13 +120,19 @@ Note that there are also variants of the above functions with a data parameter. 
 
 To bridge from Arbitrum back down to Ethereum, we do a very similar thing, this time calling into L2Gyd on Arbitrum. We don’t need to pass a chain selector this time because we always bridge to Ethereum. Like before, let AMOUNT be the decimal-scaled amount to bridge and RECIPIENT the recipient address on Ethereum. We also don’t need to approve because the token contract and the bridging entry point are the same.
 
-1. On Arbitrum, on L2Gyd, calculate the fees for bridging (view method).
-    [L2Gyd](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8).getFee(RECIPIENT, AMOUNT)
+1. On Arbitrum, on [L2Gyd](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8), calculate the fees for bridging (view method).
+    ```
+    L2Gyd.getFee(RECIPIENT, AMOUNT)
+    ```
     This returns a Wei value in ETH.
     Call the result FEE.
 2. On Arbitrum, on L2GYD, initiate the bridging operation:
-    [L2Gyd](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8).bridgeToken(RECIPIENT, AMOUNT) with payable amount = FEE
-        For Arbiscan, the same as above applies for entering the FEE.
+    ```
+    L2Gyd.bridgeToken(RECIPIENT, AMOUNT) 
+    ```
+    with payable amount = FEE
+    
+    For Arbiscan, the same as above applies for entering the FEE.
 
 FEE can vary is currently around $5 equivalent.
 
