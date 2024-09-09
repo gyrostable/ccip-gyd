@@ -89,7 +89,7 @@ To indicate the target L2 chain, CCIP does not use chain IDs but instead its own
 
 ## Bridging from Ethereum to Arbitrum
 
-decimal-scaled value (in 18 decimals), e.g., 1000000000000000000 for 1.0 GYD. Let RECIPIENT be the recipient address on Arbitrum.
+Assume you want to bridge some given amount AMOUNT from Mainnet to Arbitrum. Let AMOUNT be the  decimal-scaled value (in 18 decimals), e.g., 1000000000000000000 for 1.0 GYD. Let RECIPIENT be the recipient address on Arbitrum.
 
 1. On Mainnet, on GYD, approve AMOUNT to GydL1CCIPEscrow:
     ```
