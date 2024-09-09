@@ -101,9 +101,9 @@ Assume you want to bridge some given amount AMOUNT from Mainnet to Arbitrum. Let
     ```
     This returns a Wei value of ETH.
     Call the result FEE.
-3. On Mainnet on GydL1CCIPEscrow, initiate the bridging operation:
+3. On Mainnet on [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6), initiate the bridging operation:
     ```
-    [GydL1CCIPEscrow](https://etherscan.io/address/0xa1886c8d748DeB3774225593a70c79454B1DA8a6).bridgeToken(4949039107694359620, RECIPIENT, AMOUNT) 
+    GydL1CCIPEscrow.bridgeToken(4949039107694359620, RECIPIENT, AMOUNT) 
     ```
     with payable amount = FEE
     In Etherscan, payable amount shows up as the first “parameter” also called “bridgeToken” and has to be specified in ETH, i.e., FEE / 1e18.
@@ -126,7 +126,7 @@ To bridge from Arbitrum back down to Ethereum, we do a very similar thing, this 
     ```
     This returns a Wei value in ETH.
     Call the result FEE.
-2. On Arbitrum, on L2GYD, initiate the bridging operation:
+2. On Arbitrum, on [L2Gyd](https://arbiscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8), initiate the bridging operation:
     ```
     L2Gyd.bridgeToken(RECIPIENT, AMOUNT) 
     ```
