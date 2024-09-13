@@ -12,6 +12,7 @@ import {IRouterClient} from "ccip/interfaces/IRouterClient.sol";
 import {Client} from "ccip/libraries/Client.sol";
 import {CCIPReceiverUpgradeable} from "./CCIPReceiverUpgradeable.sol";
 
+import {IGydBridge} from "./IGydBridge.sol";
 import {CCIPHelpers} from "./CCIPHelpers.sol";
 
 /**
@@ -19,6 +20,7 @@ import {CCIPHelpers} from "./CCIPHelpers.sol";
  * @notice Main smart contract to bridge GYD from Ethereum using Chainlink CCIP
  */
 contract GydL1CCIPEscrow is
+  IGydBridge,
   Initializable,
   UUPSUpgradeable,
   AccessControlDefaultAdminRulesUpgradeable,
@@ -27,16 +29,6 @@ contract GydL1CCIPEscrow is
   using SafeERC20 for IERC20;
   using Address for address;
   using Address for address payable;
-
-  struct ChainMetadata {
-    address gydAddress;
-    uint256 gasLimit;
-  }
-
-  struct ChainData {
-    uint64 chainSelector;
-    ChainMetadata metadata;
-  }
 
   /// @notice GYD contract
   IERC20 public gyd;
@@ -51,39 +43,6 @@ contract GydL1CCIPEscrow is
 
   /// @notice The total amount of GYD bridged per chain
   mapping(uint64 => uint256) public totalBridgedGYD;
-
-  /// @notice This event is emitted when a new chain is added
-  event ChainAdded(
-    uint64 indexed chainSelector, address indexed gydAddress, uint256 gasLimit
-  );
-
-  /// @notice This event is emitted when the gas limit is updated
-  event GasLimitUpdated(uint64 indexed chainSelector, uint256 gasLimit);
-
-  /// @notice This event is emitted when the GYD is bridged
-  event GYDBridged(
-    uint64 indexed chainSelector,
-    address indexed bridger,
-    uint256 amount,
-    uint256 total
-  );
-
-  /// @notice This event is emitted when the GYD is claimed
-  event GYDClaimed(
-    uint64 indexed chainSelector,
-    address indexed bridger,
-    uint256 amount,
-    uint256 total
-  );
-
-  /// @notice This error is raised if message from the bridge is invalid
-  error MessageInvalid();
-
-  /// @notice This error is raised if the chain is not supported
-  error ChainNotSupported(uint64 chainSelector);
-
-  /// @notice This error is raised if the msg value is not enough for the fees
-  error FeesNotCovered(uint256 fees);
 
   /// @notice Disable initializer on deploy
   constructor() {
@@ -112,7 +71,7 @@ contract GydL1CCIPEscrow is
       chainsMetadata[chains[i].chainSelector] = chains[i].metadata;
       emit ChainAdded(
         chains[i].chainSelector,
-        chains[i].metadata.gydAddress,
+        chains[i].metadata.targetAddress,
         chains[i].metadata.gasLimit
       );
     }
@@ -179,12 +138,12 @@ contract GydL1CCIPEscrow is
     gyd.safeTransferFrom(msg.sender, address(this), amount);
 
     ChainMetadata memory chainMeta = chainsMetadata[destinationChainSelector];
-    if (chainMeta.gydAddress == address(0)) {
+    if (chainMeta.targetAddress == address(0)) {
       revert ChainNotSupported(destinationChainSelector);
     }
 
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      chainMeta.gydAddress, recipient, amount, data, chainMeta.gasLimit
+      chainMeta.targetAddress, recipient, amount, data, chainMeta.gasLimit
     );
     uint256 fees = router.getFee(destinationChainSelector, evm2AnyMessage);
     CCIPHelpers.sendCCIPMessage(
@@ -212,12 +171,12 @@ contract GydL1CCIPEscrow is
     bytes memory data
   ) public view returns (uint256) {
     ChainMetadata memory chainMeta = chainsMetadata[destinationChainSelector];
-    if (chainMeta.gydAddress == address(0)) {
+    if (chainMeta.targetAddress == address(0)) {
       revert ChainNotSupported(destinationChainSelector);
     }
 
     Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      chainMeta.gydAddress, recipient, amount, data, chainMeta.gasLimit
+      chainMeta.targetAddress, recipient, amount, data, chainMeta.gasLimit
     );
     return router.getFee(destinationChainSelector, evm2AnyMessage);
   }
@@ -240,7 +199,7 @@ contract GydL1CCIPEscrow is
     override
   {
     address expectedSender =
-      chainsMetadata[any2EvmMessage.sourceChainSelector].gydAddress;
+      chainsMetadata[any2EvmMessage.sourceChainSelector].targetAddress;
     if (expectedSender == address(0)) {
       revert ChainNotSupported(any2EvmMessage.sourceChainSelector);
     }

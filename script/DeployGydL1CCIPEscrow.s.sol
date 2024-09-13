@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import {GydL1CCIPEscrow} from "src/GydL1CCIPEscrow.sol";
+import {IGydBridge} from "src/IGydBridge.sol";
 
 import {UUPSProxy} from "./UUPSProxy.sol";
 import {ICREATE3Factory} from "./ICREATE3Factory.sol";
@@ -55,10 +56,10 @@ contract DeployGydL1CCIPEscrow is Script {
     // Only support Arbitrum chain on deployment
     GydL1CCIPEscrow.ChainData[] memory chains =
       new GydL1CCIPEscrow.ChainData[](1);
-    chains[0] = GydL1CCIPEscrow.ChainData({
+    chains[0] = IGydBridge.ChainData({
       chainSelector: arbitrumChainSelector,
-      metadata: GydL1CCIPEscrow.ChainMetadata({
-        gydAddress: l2Address,
+      metadata: IGydBridge.ChainMetadata({
+        targetAddress: l2Address,
         gasLimit: gasLimit
       })
     });

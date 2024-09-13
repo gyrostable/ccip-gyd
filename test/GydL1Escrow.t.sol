@@ -13,6 +13,7 @@ import {UUPSProxy} from "./UUPSProxy.sol";
 import {Client} from "ccip/libraries/Client.sol";
 
 import {CCIPReceiverUpgradeable} from "../src/CCIPReceiverUpgradeable.sol";
+import {IGydBridge} from "../src/IGydBridge.sol";
 
 /**
  * @title GydL1EscrowV2Mock
@@ -224,16 +225,14 @@ contract GydL1EscrowTest is Test {
 
     // Valid caller; invalid origin address
     vm.startPrank(routerAddress);
-    vm.expectRevert(
-      abi.encodeWithSelector(GydL1CCIPEscrow.MessageInvalid.selector)
-    );
+    vm.expectRevert(abi.encodeWithSelector(IGydBridge.MessageInvalid.selector));
     proxyV1.ccipReceive(_receivedMessage(chainSelector, address(0), data));
     vm.stopPrank();
 
     // Valid caller; invalid origin network
     vm.startPrank(routerAddress);
     vm.expectRevert(
-      abi.encodeWithSelector(GydL1CCIPEscrow.ChainNotSupported.selector, 0)
+      abi.encodeWithSelector(IGydBridge.ChainNotSupported.selector, 0)
     );
     proxyV1.ccipReceive(_receivedMessage(0, originAddress, data));
     vm.stopPrank();
