@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {Initializable} from "upgradeable/proxy/utils/Initializable.sol";
+import {StorageSlot} from "oz/utils/StorageSlot.sol";
 import {UUPSUpgradeable} from "upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
   "upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
@@ -30,6 +31,12 @@ contract GydL1CCIPEscrow is
   using Address for address;
   using Address for address payable;
 
+  // Previously stored in a mapping(uint64 => uint256) at slot 4 where the
+  // uint64 is the CCIP chain selector
+  // only Arbitrum was used, so we compute its slot
+  bytes32 private constant _PREVIOUS_TOTAL_BRIDGED_SLOT =
+    keccak256(abi.encode(4_949_039_107_694_359_620, 4));
+
   /// @notice GYD contract
   IERC20 public gyd;
 
@@ -42,7 +49,7 @@ contract GydL1CCIPEscrow is
   mapping(uint64 => ChainMetadata) public chainsMetadata;
 
   /// @notice The total amount of GYD bridged per chain
-  mapping(uint64 => uint256) public totalBridgedGYD;
+  uint256 public totalBridgedGYD;
 
   /// @notice Disable initializer on deploy
   constructor() {
@@ -75,6 +82,14 @@ contract GydL1CCIPEscrow is
         chains[i].metadata.gasLimit
       );
     }
+  }
+
+  function initializeTotalBridgedGYD() external {
+    if (totalBridgedGYD > 0) {
+      revert InvalidInitialization();
+    }
+    totalBridgedGYD =
+      StorageSlot.getUint256Slot(_PREVIOUS_TOTAL_BRIDGED_SLOT).value;
   }
 
   /**
@@ -150,9 +165,9 @@ contract GydL1CCIPEscrow is
       router, destinationChainSelector, evm2AnyMessage, fees
     );
 
-    uint256 bridged = totalBridgedGYD[destinationChainSelector];
+    uint256 bridged = totalBridgedGYD;
     bridged += amount;
-    totalBridgedGYD[destinationChainSelector] = bridged;
+    totalBridgedGYD = bridged;
     emit GYDBridged(destinationChainSelector, msg.sender, amount, bridged);
   }
 
@@ -210,9 +225,9 @@ contract GydL1CCIPEscrow is
 
     (address recipient, uint256 amount, bytes memory data) =
       abi.decode(any2EvmMessage.data, (address, uint256, bytes));
-    uint256 bridged = totalBridgedGYD[any2EvmMessage.sourceChainSelector];
+    uint256 bridged = totalBridgedGYD;
     bridged -= amount;
-    totalBridgedGYD[any2EvmMessage.sourceChainSelector] = bridged;
+    totalBridgedGYD = bridged;
 
     gyd.safeTransfer(recipient, amount);
     if (data.length > 0) {
