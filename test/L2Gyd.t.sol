@@ -11,6 +11,7 @@ import {RouterMock} from "./RouterMock.sol";
 
 import {Client} from "ccip/libraries/Client.sol";
 import {CCIPReceiverUpgradeable} from "../src/CCIPReceiverUpgradeable.sol";
+import {IGydBridge} from "../src/IGydBridge.sol";
 
 /**
  * @title L2GydV2Mock
@@ -62,29 +63,21 @@ contract L2GydTest is Test {
     vm.createSelectFork(ARBITRUM_RPC_URL, 209_934_488);
 
     v1 = new L2Gyd();
-    bytes memory v1Data = abi.encodeWithSelector(
-      L2Gyd.initialize.selector,
-      owner,
-      routerAddress,
-      destAddress,
-      mainnetChainSelector,
-      gasLimit
-    );
+    bytes memory v1Data =
+      abi.encodeWithSelector(L2Gyd.initialize.selector, owner, routerAddress);
     UUPSProxy proxy = new UUPSProxy(address(v1), v1Data);
     proxyV1 = L2Gyd(address(proxy));
+    vm.prank(owner);
+    proxyV1.addChain(mainnetChainSelector, destAddress, gasLimit);
 
     mockedV1 = new L2Gyd();
     router = new RouterMock();
-    bytes memory v2Data = abi.encodeWithSelector(
-      L2Gyd.initialize.selector,
-      owner,
-      address(router),
-      destAddress,
-      mainnetChainSelector,
-      gasLimit
-    );
+    bytes memory v2Data =
+      abi.encodeWithSelector(L2Gyd.initialize.selector, owner, address(router));
     UUPSProxy mockedProxy = new UUPSProxy(address(v1), v2Data);
     mockedProxyV1 = L2Gyd(address(mockedProxy));
+    vm.prank(owner);
+    mockedProxyV1.addChain(mainnetChainSelector, destAddress, gasLimit);
 
     v2 = new L2GydV2Mock();
     proxyV2 = L2GydV2Mock(address(proxyV1));
@@ -144,9 +137,12 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     vm.startPrank(alice);
-    uint256 fees = mockedProxyV1.getFee(alice, bridgeAmount);
+    uint256 fees =
+      mockedProxyV1.getFee(mainnetChainSelector, alice, bridgeAmount);
     deal(alice, fees);
-    mockedProxyV1.bridgeToken{value: fees}(alice, bridgeAmount);
+    mockedProxyV1.bridgeToken{value: fees}(
+      mainnetChainSelector, alice, bridgeAmount
+    );
     vm.stopPrank();
 
     assertEq(mockedProxyV1.balanceOf(alice), 0);
@@ -173,9 +169,9 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     vm.startPrank(alice);
-    uint256 fees = proxyV1.getFee(alice, bridgeAmount);
+    uint256 fees = proxyV1.getFee(mainnetChainSelector, alice, bridgeAmount);
     deal(alice, fees);
-    proxyV1.bridgeToken{value: fees}(alice, bridgeAmount);
+    proxyV1.bridgeToken{value: fees}(mainnetChainSelector, alice, bridgeAmount);
     vm.stopPrank();
 
     assertEq(proxyV1.balanceOf(alice), 0);
@@ -205,14 +201,14 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     vm.startPrank(alice);
-    uint256 fees = proxyV1.getFee(alice, bridgeAmount);
+    uint256 fees = proxyV1.getFee(mainnetChainSelector, alice, bridgeAmount);
     deal(alice, fees);
-    proxyV1.bridgeToken{value: fees}(alice, bridgeAmount);
+    proxyV1.bridgeToken{value: fees}(mainnetChainSelector, alice, bridgeAmount);
     vm.stopPrank();
 
     address currentRouterAddress = address(proxyV1.router());
-    address originAddress = proxyV1.destAddress();
-    uint64 chainSelector = proxyV1.mainnetChainSelector();
+    (address originAddress,) = proxyV1.chainsMetadata(mainnetChainSelector);
+    uint64 chainSelector = mainnetChainSelector;
     bytes memory metadata = abi.encode(bob, 1 ether, "");
 
     // Invalid caller
@@ -229,13 +225,13 @@ contract L2GydTest is Test {
 
     // Valid caller; invalid origin address
     vm.startPrank(currentRouterAddress);
-    vm.expectRevert(abi.encodeWithSelector(L2Gyd.MessageInvalid.selector));
+    vm.expectRevert(abi.encodeWithSelector(IGydBridge.MessageInvalid.selector));
     proxyV1.ccipReceive(_receivedMessage(chainSelector, address(0), metadata));
     vm.stopPrank();
 
     // Valid caller; invalid origin network
     vm.startPrank(currentRouterAddress);
-    vm.expectRevert(abi.encodeWithSelector(L2Gyd.MessageInvalid.selector));
+    vm.expectRevert(abi.encodeWithSelector(IGydBridge.MessageInvalid.selector));
     proxyV1.ccipReceive(_receivedMessage(1, originAddress, metadata));
     vm.stopPrank();
 
@@ -260,14 +256,14 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     vm.startPrank(alice);
-    uint256 fees = proxyV1.getFee(alice, bridgeAmount);
+    uint256 fees = proxyV1.getFee(mainnetChainSelector, alice, bridgeAmount);
     deal(alice, fees);
-    proxyV1.bridgeToken{value: fees}(bob, bridgeAmount);
+    proxyV1.bridgeToken{value: fees}(mainnetChainSelector, bob, bridgeAmount);
     vm.stopPrank();
 
     address currentRouterAddress = address(proxyV1.router());
-    address originAddress = proxyV1.destAddress();
-    uint64 chainSelector = proxyV1.mainnetChainSelector();
+    (address originAddress,) = proxyV1.chainsMetadata(mainnetChainSelector);
+    uint64 chainSelector = mainnetChainSelector;
     bytes memory messageData = abi.encode(bob, bridgeAmount, "");
 
     vm.startPrank(currentRouterAddress);
@@ -284,9 +280,10 @@ contract L2GydTest is Test {
     uint256 newGasLimit = 100_000;
 
     vm.prank(owner);
-    proxyV2.updateGasLimit(newGasLimit);
+    proxyV2.updateGasLimit(mainnetChainSelector, newGasLimit);
+    (, uint256 gasLimit_) = proxyV2.chainsMetadata(mainnetChainSelector);
 
-    assertEq(proxyV2.bridgeGasLimit(), newGasLimit);
+    assertEq(gasLimit_, newGasLimit);
   }
 
   function _receivedMessage(

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import {EnumerableMap} from "oz/utils/structs/EnumerableMap.sol";
 import {Address} from "oz/utils/Address.sol";
 import {Initializable} from "upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -12,6 +13,7 @@ import {Client} from "ccip/libraries/Client.sol";
 import {IRouterClient} from "ccip/interfaces/IRouterClient.sol";
 import {CCIPReceiverUpgradeable} from "./CCIPReceiverUpgradeable.sol";
 import {CCIPHelpers} from "./CCIPHelpers.sol";
+import {IGydBridge} from "./IGydBridge.sol";
 
 /**
  * @title L2Gyd
@@ -19,6 +21,7 @@ import {CCIPHelpers} from "./CCIPHelpers.sol";
  * back GYD too
  */
 contract L2Gyd is
+  IGydBridge,
   Initializable,
   UUPSUpgradeable,
   Ownable2StepUpgradeable,
@@ -30,26 +33,10 @@ contract L2Gyd is
   /// @notice The CCIP router contract
   IRouterClient public router;
 
-  /// @notice GydL1Escrow contract address on Ethereum mainnet
-  address public destAddress;
-
-  /// @notice Gas limit when bridging to the GydL1Escrow
-  uint256 public bridgeGasLimit;
-
-  /// @notice Chain selector of Ethereum mainnet on CCIP
-  uint64 public mainnetChainSelector;
-
-  /// @notice This event is emitted when the GYD is bridged
-  event GYDBridged(address indexed bridger, uint256 amount, uint256 total);
-
-  /// @notice This event is emitted when the GYD is claimed
-  event GYDClaimed(address indexed bridger, uint256 amount, uint256 total);
-
-  /// @notice This event is emitted when the gas limit is updated
-  event GasLimitUpdated(uint256 gasLimit);
-
-  /// @notice This error is raised if message from the bridge is invalid
-  error MessageInvalid();
+  /// @notice Mapping from chain selector to chain metadata (mainly GYD
+  /// contract address)
+  /// Only chains in this mapping can be bridged to
+  mapping(uint64 => ChainMetadata) public chainsMetadata;
 
   /// @notice This error is raised if ownership is renounced
   error RenounceInvalid();
@@ -64,17 +51,11 @@ contract L2Gyd is
    * @dev This initializer should be called via UUPSProxy constructor
    * @param _ownerAddress The contract owner
    * @param _routerAddress The CCIP router address
-   * @param _destAddress The contract address of GydL1Escrow
-   * @param _chainSelector The chain selector of Ethereum mainnet on CCIP
-   * @param _bridgeGasLimit The gas limit when bridging to the GydL1Escrow
    */
-  function initialize(
-    address _ownerAddress,
-    address _routerAddress,
-    address _destAddress,
-    uint64 _chainSelector,
-    uint256 _bridgeGasLimit
-  ) public initializer {
+  function initialize(address _ownerAddress, address _routerAddress)
+    public
+    initializer
+  {
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
     __ERC20_init("Gyro Dollar", "GYD");
@@ -82,9 +63,6 @@ contract L2Gyd is
 
     _transferOwnership(_ownerAddress);
     router = IRouterClient(_routerAddress);
-    destAddress = _destAddress;
-    mainnetChainSelector = _chainSelector;
-    bridgeGasLimit = _bridgeGasLimit;
   }
 
   /**
@@ -101,58 +79,94 @@ contract L2Gyd is
     revert RenounceInvalid();
   }
 
-  function bridgeToken(address recipient, uint256 amount) public payable {
-    bridgeToken(recipient, amount, "");
-  }
-
   /**
-   * @notice Bridge GYD from the current chain to Ethereum mainnet
-   * @param recipient The recipient of the bridged token
-   * @param amount GYD amount
+   * @notice Allows the owner to support a new chain
+   * @param chainSelector the selector of the chain
+   * https://docs.chain.link/ccip/supported-networks/v1_2_0/mainnet#configuration
+   * @param gydAddress the GYD contract address on the chain
    */
-  function bridgeToken(address recipient, uint256 amount, bytes memory data)
-    public
-    payable
-    virtual
-  {
-    _burn(msg.sender, amount);
-    Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      destAddress, recipient, amount, data, bridgeGasLimit
-    );
-    uint256 fees = router.getFee(mainnetChainSelector, evm2AnyMessage);
-    CCIPHelpers.sendCCIPMessage(
-      router, mainnetChainSelector, evm2AnyMessage, fees
-    );
-
-    emit GYDBridged(msg.sender, amount, totalSupply());
-  }
-
-  function getFee(address recipient, uint256 amount)
+  function addChain(uint64 chainSelector, address gydAddress, uint256 gasLimit)
     external
-    view
-    returns (uint256)
+    onlyOwner
   {
-    return getFee(recipient, amount, "");
-  }
-
-  function getFee(address recipient, uint256 amount, bytes memory data)
-    public
-    view
-    returns (uint256)
-  {
-    Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
-      destAddress, recipient, amount, data, bridgeGasLimit
-    );
-    return router.getFee(mainnetChainSelector, evm2AnyMessage);
+    chainsMetadata[chainSelector] = ChainMetadata(gydAddress, gasLimit);
+    emit ChainAdded(chainSelector, gydAddress, gasLimit);
   }
 
   /**
    * Updates the gas limit when bridging to a chain
+   * @param chainSelector the selector of the chain
    * @param gasLimit the new gas limit for this chain
    */
-  function updateGasLimit(uint256 gasLimit) external onlyOwner {
-    bridgeGasLimit = gasLimit;
-    emit GasLimitUpdated(gasLimit);
+  function updateGasLimit(uint64 chainSelector, uint256 gasLimit)
+    external
+    onlyOwner
+  {
+    ChainMetadata storage chainMetadata = chainsMetadata[chainSelector];
+    chainMetadata.gasLimit = gasLimit;
+    emit GasLimitUpdated(chainSelector, gasLimit);
+  }
+
+  function bridgeToken(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount
+  ) public payable {
+    bridgeToken(destinationChainSelector, recipient, amount, "");
+  }
+
+  /**
+   * @notice Bridge GYD from the current chain to the given chain
+   * @param recipient The recipient of the bridged token
+   * @param amount GYD amount
+   */
+  function bridgeToken(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount,
+    bytes memory data
+  ) public payable virtual {
+    ChainMetadata memory metadata = chainsMetadata[destinationChainSelector];
+    if (metadata.targetAddress == address(0)) {
+      revert ChainNotSupported(destinationChainSelector);
+    }
+
+    _burn(msg.sender, amount);
+    Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
+      metadata.targetAddress, recipient, amount, data, metadata.gasLimit
+    );
+    uint256 fees = router.getFee(destinationChainSelector, evm2AnyMessage);
+    CCIPHelpers.sendCCIPMessage(
+      router, destinationChainSelector, evm2AnyMessage, fees
+    );
+
+    emit GYDBridged(
+      destinationChainSelector, msg.sender, amount, totalSupply()
+    );
+  }
+
+  function getFee(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount
+  ) external view returns (uint256) {
+    return getFee(destinationChainSelector, recipient, amount, "");
+  }
+
+  function getFee(
+    uint64 destinationChainSelector,
+    address recipient,
+    uint256 amount,
+    bytes memory data
+  ) public view returns (uint256) {
+    ChainMetadata memory chainMeta = chainsMetadata[destinationChainSelector];
+    if (chainMeta.targetAddress == address(0)) {
+      revert ChainNotSupported(destinationChainSelector);
+    }
+    Client.EVM2AnyMessage memory evm2AnyMessage = CCIPHelpers.buildCCIPMessage(
+      chainMeta.targetAddress, recipient, amount, data, chainMeta.gasLimit
+    );
+    return router.getFee(destinationChainSelector, evm2AnyMessage);
   }
 
   /// @dev handle a received message
@@ -161,11 +175,10 @@ contract L2Gyd is
     internal
     override
   {
-    if (any2EvmMessage.sourceChainSelector != mainnetChainSelector) {
-      revert MessageInvalid();
-    }
+    ChainMetadata memory chainMeta =
+      chainsMetadata[any2EvmMessage.sourceChainSelector];
     address actualSender = abi.decode(any2EvmMessage.sender, (address));
-    if (actualSender != destAddress) {
+    if (actualSender != chainMeta.targetAddress) {
       revert MessageInvalid();
     }
 
@@ -176,6 +189,8 @@ contract L2Gyd is
       recipient.functionCall(data);
     }
 
-    emit GYDClaimed(recipient, amount, totalSupply());
+    emit GYDClaimed(
+      any2EvmMessage.sourceChainSelector, recipient, amount, totalSupply()
+    );
   }
 }

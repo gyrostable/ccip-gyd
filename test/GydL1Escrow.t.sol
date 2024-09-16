@@ -13,6 +13,7 @@ import {UUPSProxy} from "./UUPSProxy.sol";
 import {Client} from "ccip/libraries/Client.sol";
 
 import {CCIPReceiverUpgradeable} from "../src/CCIPReceiverUpgradeable.sol";
+import {IGydBridge} from "../src/IGydBridge.sol";
 
 /**
  * @title GydL1EscrowV2Mock
@@ -27,7 +28,7 @@ contract GydL1EscrowV2Mock is GydL1CCIPEscrow {
     virtual
     override
   {
-    totalBridgedGYD[0] = 2 * amount;
+    totalBridgedGYD = 2 * amount;
   }
 }
 
@@ -109,14 +110,14 @@ contract GydL1EscrowTest is Test {
   /// @notice Upgrade as admin; make sure it works as expected
   function testUpgradeAsAdmin() public {
     // Pre-upgrade check
-    assertEq(proxyV1.totalBridgedGYD(0), 0);
+    assertEq(proxyV1.totalBridgedGYD(), 0);
     vm.expectRevert("ERC20: insufficient allowance");
     proxyV1.bridgeToken(0, alice, 1 ether);
 
     vm.startPrank(admin);
     proxyV1.upgradeToAndCall(address(v2), "");
     proxyV2.bridgeToken(0, alice, 1 ether);
-    assertEq(proxyV1.totalBridgedGYD(0), 2 ether);
+    assertEq(proxyV1.totalBridgedGYD(), 2 ether);
   }
 
   /// @notice Upgrade as non-admin; make sure it reverted
@@ -153,9 +154,7 @@ contract GydL1EscrowTest is Test {
 
     assertEq(IERC20(gyd).balanceOf(alice), 0);
     assertEq(IERC20(gyd).balanceOf(address(mockedProxyV1)), bridgeAmount);
-    assertEq(
-      mockedProxyV1.totalBridgedGYD(arbitrumChainSelector), bridgeAmount
-    );
+    assertEq(mockedProxyV1.totalBridgedGYD(), bridgeAmount);
 
     assertEq(router.destinationChainSelector(), arbitrumChainSelector);
     assertEq(router.destAddress(), gyd);
@@ -180,7 +179,7 @@ contract GydL1EscrowTest is Test {
     );
     vm.stopPrank();
 
-    assertEq(proxyV1.totalBridgedGYD(arbitrumChainSelector), bridgeAmount);
+    assertEq(proxyV1.totalBridgedGYD(), bridgeAmount);
     assertEq(IERC20(gyd).balanceOf(alice), 0);
     assertEq(IERC20(gyd).balanceOf(address(proxyV1)), bridgeAmount);
   }
@@ -224,16 +223,14 @@ contract GydL1EscrowTest is Test {
 
     // Valid caller; invalid origin address
     vm.startPrank(routerAddress);
-    vm.expectRevert(
-      abi.encodeWithSelector(GydL1CCIPEscrow.MessageInvalid.selector)
-    );
+    vm.expectRevert(abi.encodeWithSelector(IGydBridge.MessageInvalid.selector));
     proxyV1.ccipReceive(_receivedMessage(chainSelector, address(0), data));
     vm.stopPrank();
 
     // Valid caller; invalid origin network
     vm.startPrank(routerAddress);
     vm.expectRevert(
-      abi.encodeWithSelector(GydL1CCIPEscrow.ChainNotSupported.selector, 0)
+      abi.encodeWithSelector(IGydBridge.ChainNotSupported.selector, 0)
     );
     proxyV1.ccipReceive(_receivedMessage(0, originAddress, data));
     vm.stopPrank();
@@ -270,7 +267,7 @@ contract GydL1EscrowTest is Test {
     vm.stopPrank();
 
     assertEq(IERC20(gyd).balanceOf(bob), bridgeAmount);
-    assertEq(proxyV1.totalBridgedGYD(arbitrumChainSelector), 0);
+    assertEq(proxyV1.totalBridgedGYD(), 0);
   }
 
   function testUpdateGasLimit() public {
