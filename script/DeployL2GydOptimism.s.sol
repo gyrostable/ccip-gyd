@@ -4,9 +4,9 @@ pragma solidity ^0.8.17;
 import {L2GydDeploymentScript} from "./L2GydDeploymentScript.sol";
 
 contract DeployL2Gyd is L2GydDeploymentScript {
-  // CCIP router (Arbitrum)
-  // https://arbiscan.io/address/0x141fa059441E0ca23ce184B6A78bafD2A517DdE8
-  address ccipRouter = 0x141fa059441E0ca23ce184B6A78bafD2A517DdE8;
+  // CCIP router (Optimism)
+  // https://optimistic.etherscan.io/address/0x3206695CaE29952f4b0c22a169725a865bc8Ce0f
+  address ccipRouter = 0x3206695CaE29952f4b0c22a169725a865bc8Ce0f;
 
   function run() public returns (address proxy) {
     return _deploy(ccipRouter);

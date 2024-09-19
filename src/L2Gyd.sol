@@ -83,14 +83,17 @@ contract L2Gyd is
    * @notice Allows the owner to support a new chain
    * @param chainSelector the selector of the chain
    * https://docs.chain.link/ccip/supported-networks/v1_2_0/mainnet#configuration
-   * @param gydAddress the GYD contract address on the chain
+   * @param targetAddress the target address on the chain
+   * For Ethereum mainnet, this will be the address of the GYD escrow
+   * For other L2s, it will be the L2Gyd contract
    */
-  function addChain(uint64 chainSelector, address gydAddress, uint256 gasLimit)
-    external
-    onlyOwner
-  {
-    chainsMetadata[chainSelector] = ChainMetadata(gydAddress, gasLimit);
-    emit ChainAdded(chainSelector, gydAddress, gasLimit);
+  function addChain(
+    uint64 chainSelector,
+    address targetAddress,
+    uint256 gasLimit
+  ) external onlyOwner {
+    chainsMetadata[chainSelector] = ChainMetadata(targetAddress, gasLimit);
+    emit ChainAdded(chainSelector, targetAddress, gasLimit);
   }
 
   /**
