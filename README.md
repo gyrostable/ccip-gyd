@@ -86,8 +86,10 @@ To indicate the target L2 chain, CCIP does not use chain IDs but instead its own
 
 | Target Chain | Selector            |
 |--------------|---------------------|
+| mainnet      | 5009297550715157269 |
 | arbitrum     | 4949039107694359620 |
 | optimism     | 3734403246176062136 |
+| avalanche    | 6433500567565415381 |
 
 ## Bridging from Ethereum to Arbitrum
 
