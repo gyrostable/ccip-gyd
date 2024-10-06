@@ -71,6 +71,8 @@ Deployment scripts are located in the [`script`](./script/) directory.
 | L2Gyd               | Optimism      | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://optimistic.etherscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
 | L2Gyd               | Avalanche     | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://snowtrace.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
 | L2Gyd               | Polygon       | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://polygonscan.com/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
+| L2Gyd               | Base          | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://basescan.org/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
+| L2Gyd               | Gnosis        | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://gnosisscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
 
 
 # How to bridge GYD manually: Ethereum ↔ Arbitrum
@@ -86,13 +88,15 @@ This manual applies to the Ethereum ↔ Arbitrum bridge. The Ethereum ↔ zkEVM 
 To indicate the target L2 chain, CCIP does not use chain IDs but instead its own system of “chain selectors,” which are as follows. The chain selector has to be provided to GydL1CCIPEscrow when bridging. See here for details: https://github.com/smartcontractkit/chain-selectors/blob/main/selectors.yml 
 
 
-| Target Chain | Selector            |
-|--------------|---------------------|
-| mainnet      | 5009297550715157269 |
-| arbitrum     | 4949039107694359620 |
-| optimism     | 3734403246176062136 |
-| avalanche    | 6433500567565415381 |
-| polygon      | 4051577828743386545 |
+| Target Chain | Selector             |
+|--------------|----------------------|
+| mainnet      | 5009297550715157269  |
+| arbitrum     | 4949039107694359620  |
+| optimism     | 3734403246176062136  |
+| avalanche    | 6433500567565415381  |
+| polygon      | 4051577828743386545  |
+| base         | 15971525489660198786 |
+| gnosis       | 465200170687744372   |
 
 ## Bridging from Ethereum to Arbitrum
 
