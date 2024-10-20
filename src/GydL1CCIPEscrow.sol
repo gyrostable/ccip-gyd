@@ -51,6 +51,9 @@ contract GydL1CCIPEscrow is
   /// @notice The total amount of GYD bridged per chain
   uint256 public totalBridgedGYD;
 
+  /// @notice Rate limit data per chain
+  mapping(uint64 => RateLimitData) public rateLimitData;
+
   /// @notice Disable initializer on deploy
   constructor() {
     _disableInitializers();
@@ -76,11 +79,7 @@ contract GydL1CCIPEscrow is
     router = IRouterClient(_routerAddress);
     for (uint256 i; i < chains.length; i++) {
       chainsMetadata[chains[i].chainSelector] = chains[i].metadata;
-      emit ChainAdded(
-        chains[i].chainSelector,
-        chains[i].metadata.targetAddress,
-        chains[i].metadata.gasLimit
-      );
+      emit ChainSet(chains[i].chainSelector, chains[i].metadata);
     }
   }
 
@@ -106,14 +105,19 @@ contract GydL1CCIPEscrow is
    * @notice Allows the owner to support a new chain
    * @param chainSelector the selector of the chain
    * https://docs.chain.link/ccip/supported-networks/v1_2_0/mainnet#configuration
-   * @param gydAddress the GYD contract address on the chain
+   * @param metadata the metadata for this chain
    */
-  function addChain(uint64 chainSelector, address gydAddress, uint256 gasLimit)
+  function setChain(uint64 chainSelector, ChainMetadata memory metadata)
     external
     onlyRole(DEFAULT_ADMIN_ROLE)
   {
-    chainsMetadata[chainSelector] = ChainMetadata(gydAddress, gasLimit);
-    emit ChainAdded(chainSelector, gydAddress, gasLimit);
+    chainsMetadata[chainSelector] = metadata;
+    rateLimitData[chainSelector] = RateLimitData({
+      available: uint192(metadata.capacity),
+      lastRefill: uint64(block.timestamp)
+    });
+
+    emit ChainSet(chainSelector, metadata);
   }
 
   /**
@@ -213,18 +217,22 @@ contract GydL1CCIPEscrow is
     internal
     override
   {
-    address expectedSender =
-      chainsMetadata[any2EvmMessage.sourceChainSelector].targetAddress;
-    if (expectedSender == address(0)) {
-      revert ChainNotSupported(any2EvmMessage.sourceChainSelector);
-    }
+    uint64 chainSelector = any2EvmMessage.sourceChainSelector;
+    ChainMetadata memory chainMeta = chainsMetadata[chainSelector];
+    address expectedSender = chainMeta.targetAddress;
+
+    if (expectedSender == address(0)) revert ChainNotSupported(chainSelector);
+
     address actualSender = abi.decode(any2EvmMessage.sender, (address));
-    if (expectedSender != actualSender) {
-      revert MessageInvalid();
-    }
+    if (expectedSender != actualSender) revert MessageInvalid();
 
     (address recipient, uint256 amount, bytes memory data) =
       abi.decode(any2EvmMessage.data, (address, uint256, bytes));
+
+    rateLimitData[chainSelector] = CCIPHelpers.validateRateLimit(
+      chainSelector, amount, rateLimitData[chainSelector], chainMeta
+    );
+
     uint256 bridged = totalBridgedGYD;
     bridged -= amount;
     totalBridgedGYD = bridged;

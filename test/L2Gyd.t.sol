@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Test} from "forge-std/Test.sol";
+import {console, Test} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "upgradeable/access/OwnableUpgradeable.sol";
 
 import {L2Gyd} from "src/L2Gyd.sol";
@@ -50,6 +50,7 @@ contract L2GydTest is Test {
   address destAddress = makeAddr("L1CCIPEscrow");
   uint64 mainnetChainSelector = 3_734_403_246_176_062_136;
   uint256 gasLimit = 200_000;
+  uint256 capacity = 10_000_000e18;
 
   L2Gyd v1;
   L2Gyd proxyV1;
@@ -68,7 +69,13 @@ contract L2GydTest is Test {
     UUPSProxy proxy = new UUPSProxy(address(v1), v1Data);
     proxyV1 = L2Gyd(address(proxy));
     vm.prank(owner);
-    proxyV1.addChain(mainnetChainSelector, destAddress, gasLimit);
+    IGydBridge.ChainMetadata memory metadata = IGydBridge.ChainMetadata({
+      targetAddress: destAddress,
+      gasLimit: gasLimit,
+      capacity: capacity,
+      refillRate: 100e18
+    });
+    proxyV1.setChain(mainnetChainSelector, metadata);
 
     mockedV1 = new L2Gyd();
     router = new RouterMock();
@@ -77,7 +84,7 @@ contract L2GydTest is Test {
     UUPSProxy mockedProxy = new UUPSProxy(address(v1), v2Data);
     mockedProxyV1 = L2Gyd(address(mockedProxy));
     vm.prank(owner);
-    mockedProxyV1.addChain(mainnetChainSelector, destAddress, gasLimit);
+    mockedProxyV1.setChain(mainnetChainSelector, metadata);
 
     v2 = new L2GydV2Mock();
     proxyV2 = L2GydV2Mock(address(proxyV1));
@@ -126,7 +133,7 @@ contract L2GydTest is Test {
   /// @notice Make sure L2Gyd submit correct message to the router
   function testBridgeWithMockedBridge(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     // Mint test NativeGYD
     vm.startPrank(address(router));
@@ -158,7 +165,7 @@ contract L2GydTest is Test {
   /// @notice Make sure L2Gyd can interact with the router
   function testBridgeWithRealBridge(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
@@ -190,7 +197,7 @@ contract L2GydTest is Test {
   /// @notice Make sure to revert if message is invalid
   function testOnMessageReceivedInvalidMessage(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
@@ -207,7 +214,7 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     address currentRouterAddress = address(proxyV1.router());
-    (address originAddress,) = proxyV1.chainsMetadata(mainnetChainSelector);
+    (address originAddress,,,) = proxyV1.chainsMetadata(mainnetChainSelector);
     uint64 chainSelector = mainnetChainSelector;
     bytes memory metadata = abi.encode(bob, 1 ether, "");
 
@@ -245,7 +252,7 @@ contract L2GydTest is Test {
   /// @notice Make sure user can claim the GYD
   function testOnMessageReceivedValidMessage(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity / 2);
 
     // Mint test NativeGYD
     vm.startPrank(routerAddress);
@@ -262,7 +269,7 @@ contract L2GydTest is Test {
     vm.stopPrank();
 
     address currentRouterAddress = address(proxyV1.router());
-    (address originAddress,) = proxyV1.chainsMetadata(mainnetChainSelector);
+    (address originAddress,,,) = proxyV1.chainsMetadata(mainnetChainSelector);
     uint64 chainSelector = mainnetChainSelector;
     bytes memory messageData = abi.encode(bob, bridgeAmount, "");
 
@@ -281,7 +288,7 @@ contract L2GydTest is Test {
 
     vm.prank(owner);
     proxyV2.updateGasLimit(mainnetChainSelector, newGasLimit);
-    (, uint256 gasLimit_) = proxyV2.chainsMetadata(mainnetChainSelector);
+    (, uint256 gasLimit_,,) = proxyV2.chainsMetadata(mainnetChainSelector);
 
     assertEq(gasLimit_, newGasLimit);
   }

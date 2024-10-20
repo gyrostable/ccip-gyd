@@ -50,6 +50,7 @@ contract GydL1EscrowTest is Test {
   address gyd = address(0xe07F9D810a48ab5c3c914BA3cA53AF14E4491e8A);
   address ccipRouterAddress =
     address(0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D);
+  uint256 capacity = 10_000_000e18;
 
   GydL1CCIPEscrow v1;
   GydL1CCIPEscrow proxyV1;
@@ -73,7 +74,13 @@ contract GydL1EscrowTest is Test {
     UUPSProxy proxy = new UUPSProxy(address(v1), v1Data);
     proxyV1 = GydL1CCIPEscrow(address(proxy));
     vm.prank(admin);
-    proxyV1.addChain(arbitrumChainSelector, gyd, gasLimit);
+    IGydBridge.ChainMetadata memory metadata = IGydBridge.ChainMetadata({
+      targetAddress: gyd,
+      gasLimit: gasLimit,
+      capacity: capacity,
+      refillRate: 100e18
+    });
+    proxyV1.setChain(arbitrumChainSelector, metadata);
 
     mockedV1 = new GydL1CCIPEscrow();
     router = new RouterMock();
@@ -87,7 +94,7 @@ contract GydL1EscrowTest is Test {
     UUPSProxy mockedProxy = new UUPSProxy(address(v1), mockedV1Data);
     mockedProxyV1 = GydL1CCIPEscrow(address(mockedProxy));
     vm.prank(admin);
-    mockedProxyV1.addChain(arbitrumChainSelector, gyd, gasLimit);
+    mockedProxyV1.setChain(arbitrumChainSelector, metadata);
     v2 = new GydL1EscrowV2Mock();
     proxyV2 = GydL1EscrowV2Mock(address(proxyV1));
 
@@ -138,7 +145,7 @@ contract GydL1EscrowTest is Test {
   /// @notice Make sure GydL1CCIPEscrow submit correct message to the bridge
   function testBridgeWithMockedBridge(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     vm.startPrank(alice);
     uint256 fees =
@@ -166,7 +173,7 @@ contract GydL1EscrowTest is Test {
   /// @notice Make sure GydL1CCIPEscrow can interact with the router
   function testBridgeWithRealBridge(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     vm.startPrank(alice);
     uint256 fees =
@@ -194,7 +201,7 @@ contract GydL1EscrowTest is Test {
   /// @notice Make sure to revert if message is invalid
   function testOnMessageReceivedInvalidMessage(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     vm.startPrank(alice);
     uint256 fees = proxyV1.getFee(arbitrumChainSelector, alice, bridgeAmount);
@@ -207,7 +214,7 @@ contract GydL1EscrowTest is Test {
     vm.stopPrank();
 
     address routerAddress = address(proxyV1.router());
-    (address originAddress,) = proxyV1.chainsMetadata(arbitrumChainSelector);
+    (address originAddress,,,) = proxyV1.chainsMetadata(arbitrumChainSelector);
     uint64 chainSelector = arbitrumChainSelector;
     bytes memory data = abi.encode(bob, 1 ether, "");
 
@@ -245,7 +252,7 @@ contract GydL1EscrowTest is Test {
   /// @notice Make sure user can claim the GYD
   function testOnMessageReceivedValidMessage(uint256 bridgeAmount) public {
     vm.assume(bridgeAmount > 1 ether);
-    vm.assume(bridgeAmount < 1_000_000_000 ether);
+    vm.assume(bridgeAmount < capacity);
 
     vm.startPrank(alice);
     uint256 fees = proxyV1.getFee(arbitrumChainSelector, alice, bridgeAmount);
@@ -256,7 +263,7 @@ contract GydL1EscrowTest is Test {
     vm.stopPrank();
 
     address routerAddress = address(proxyV1.router());
-    (address originAddress,) = proxyV1.chainsMetadata(arbitrumChainSelector);
+    (address originAddress,,,) = proxyV1.chainsMetadata(arbitrumChainSelector);
     uint64 chainSelector = arbitrumChainSelector;
     bytes memory messageData = abi.encode(bob, bridgeAmount, "");
 
@@ -270,13 +277,44 @@ contract GydL1EscrowTest is Test {
     assertEq(proxyV1.totalBridgedGYD(), 0);
   }
 
+  function testOnMessageReceivedValidMessageOverLimit() public {
+    uint256 bridgeAmount = capacity + 1;
+
+    vm.startPrank(alice);
+    uint256 fees = proxyV1.getFee(arbitrumChainSelector, alice, bridgeAmount);
+    deal(alice, fees);
+    deal(gyd, alice, bridgeAmount);
+    IERC20(gyd).safeIncreaseAllowance(address(proxyV1), bridgeAmount);
+    proxyV1.bridgeToken{value: fees}(arbitrumChainSelector, bob, bridgeAmount);
+    vm.stopPrank();
+
+    address routerAddress = address(proxyV1.router());
+    (address originAddress,,,) = proxyV1.chainsMetadata(arbitrumChainSelector);
+    uint64 chainSelector = arbitrumChainSelector;
+    bytes memory messageData = abi.encode(bob, bridgeAmount, "");
+
+    vm.startPrank(routerAddress);
+    vm.expectRevert(
+      abi.encodeWithSelector(
+        IGydBridge.RateLimitExceeded.selector,
+        chainSelector,
+        bridgeAmount,
+        capacity
+      )
+    );
+    proxyV1.ccipReceive(
+      _receivedMessage(chainSelector, originAddress, messageData)
+    );
+    vm.stopPrank();
+  }
+
   function testUpdateGasLimit() public {
     uint256 newGasLimit = 100_000;
 
     vm.prank(admin);
     proxyV1.updateGasLimit(arbitrumChainSelector, newGasLimit);
 
-    (, uint256 gasLimit_) = proxyV1.chainsMetadata(arbitrumChainSelector);
+    (, uint256 gasLimit_,,) = proxyV1.chainsMetadata(arbitrumChainSelector);
     assertEq(gasLimit_, newGasLimit);
   }
 

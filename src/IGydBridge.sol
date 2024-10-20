@@ -5,6 +5,8 @@ interface IGydBridge {
   struct ChainMetadata {
     address targetAddress;
     uint256 gasLimit;
+    uint256 capacity;
+    uint256 refillRate;
   }
 
   struct ChainData {
@@ -12,12 +14,13 @@ interface IGydBridge {
     ChainMetadata metadata;
   }
 
-  /// @notice This event is emitted when a new chain is added
-  event ChainAdded(
-    uint64 indexed chainSelector,
-    address indexed targetAddress,
-    uint256 gasLimit
-  );
+  struct RateLimitData {
+    uint192 available;
+    uint64 lastRefill;
+  }
+
+  /// @notice This event is emitted when a new chain is set
+  event ChainSet(uint64 indexed chainSelector, ChainMetadata metadata);
 
   /// @notice This event is emitted when the gas limit is updated
   event GasLimitUpdated(uint64 indexed chainSelector, uint256 gasLimit);
@@ -46,4 +49,9 @@ interface IGydBridge {
 
   /// @notice This error is raised if the msg value is not enough for the fees
   error FeesNotCovered(uint256 fees);
+
+  /// @notice This error is raised if the rate limit is exceeded
+  error RateLimitExceeded(
+    uint64 chainSelector, uint256 requested, uint256 available
+  );
 }

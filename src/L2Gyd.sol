@@ -38,6 +38,9 @@ contract L2Gyd is
   /// Only chains in this mapping can be bridged to
   mapping(uint64 => ChainMetadata) public chainsMetadata;
 
+  /// @notice Rate limit data per chain
+  mapping(uint64 => RateLimitData) public rateLimitData;
+
   /// @notice This error is raised if ownership is renounced
   error RenounceInvalid();
 
@@ -83,17 +86,20 @@ contract L2Gyd is
    * @notice Allows the owner to support a new chain
    * @param chainSelector the selector of the chain
    * https://docs.chain.link/ccip/supported-networks/v1_2_0/mainnet#configuration
-   * @param targetAddress the target address on the chain
+   * @param metadata the metadata for the chain to add
    * For Ethereum mainnet, this will be the address of the GYD escrow
    * For other L2s, it will be the L2Gyd contract
    */
-  function addChain(
-    uint64 chainSelector,
-    address targetAddress,
-    uint256 gasLimit
-  ) external onlyOwner {
-    chainsMetadata[chainSelector] = ChainMetadata(targetAddress, gasLimit);
-    emit ChainAdded(chainSelector, targetAddress, gasLimit);
+  function setChain(uint64 chainSelector, ChainMetadata memory metadata)
+    external
+    onlyOwner
+  {
+    chainsMetadata[chainSelector] = metadata;
+    rateLimitData[chainSelector] = RateLimitData({
+      available: uint192(metadata.capacity),
+      lastRefill: uint64(block.timestamp)
+    });
+    emit ChainSet(chainSelector, metadata);
   }
 
   /**
@@ -178,22 +184,23 @@ contract L2Gyd is
     internal
     override
   {
-    ChainMetadata memory chainMeta =
-      chainsMetadata[any2EvmMessage.sourceChainSelector];
+    uint64 chainSelector = any2EvmMessage.sourceChainSelector;
+    ChainMetadata memory chainMeta = chainsMetadata[chainSelector];
     address actualSender = abi.decode(any2EvmMessage.sender, (address));
-    if (actualSender != chainMeta.targetAddress) {
-      revert MessageInvalid();
-    }
+    if (actualSender != chainMeta.targetAddress) revert MessageInvalid();
 
     (address recipient, uint256 amount, bytes memory data) =
       abi.decode(any2EvmMessage.data, (address, uint256, bytes));
+
+    rateLimitData[chainSelector] = CCIPHelpers.validateRateLimit(
+      chainSelector, amount, rateLimitData[chainSelector], chainMeta
+    );
+
     _mint(recipient, amount);
     if (data.length > 0) {
       recipient.functionCall(data);
     }
 
-    emit GYDClaimed(
-      any2EvmMessage.sourceChainSelector, recipient, amount, totalSupply()
-    );
+    emit GYDClaimed(chainSelector, recipient, amount, totalSupply());
   }
 }

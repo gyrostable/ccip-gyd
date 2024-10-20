@@ -5,6 +5,8 @@ import {Client} from "ccip/libraries/Client.sol";
 import {IRouterClient} from "ccip/interfaces/IRouterClient.sol";
 import {Address} from "oz/utils/Address.sol";
 
+import {IGydBridge} from "./IGydBridge.sol";
+
 library CCIPHelpers {
   using Address for address payable;
 
@@ -42,5 +44,26 @@ library CCIPHelpers {
     if (refund > 0) {
       payable(msg.sender).sendValue(refund);
     }
+  }
+
+  function validateRateLimit(
+    uint64 chainSelector,
+    uint256 amount,
+    IGydBridge.RateLimitData memory rateLimit,
+    IGydBridge.ChainMetadata memory chainMeta
+  ) internal view returns (IGydBridge.RateLimitData memory) {
+    uint256 ellapsedSinceReplenish = block.timestamp - rateLimit.lastRefill;
+    uint256 amountToReplenish = ellapsedSinceReplenish * chainMeta.refillRate;
+    uint256 available = rateLimit.available + amountToReplenish;
+    if (available > chainMeta.capacity) {
+      available = chainMeta.capacity;
+    }
+    if (available < amount) {
+      revert IGydBridge.RateLimitExceeded(chainSelector, amount, available);
+    }
+    return IGydBridge.RateLimitData({
+      available: uint192(available - amount),
+      lastRefill: uint64(block.timestamp)
+    });
   }
 }
