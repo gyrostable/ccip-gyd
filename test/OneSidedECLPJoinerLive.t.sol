@@ -14,6 +14,7 @@ contract OneSidedECLPJoinerLiveTest is Test {
     address router = 0x141fa059441E0ca23ce184B6A78bafD2A517DdE8;
     address l1escrow = 0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8;
     address bootstrapping_pool_addr = 0x820b69faD931d4b4Bf14E70fF234A8390F6A0658;
+    address bad_bootstrapping_pool_addr = 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF;
 
     // Here this is stataUSDC
     address other_token_addr = 0x7CFaDFD5645B50bE87d546f42699d863648251ad; 
@@ -92,13 +93,13 @@ contract OneSidedECLPJoinerLiveTest is Test {
         );
 
         vm.startPrank(router);
+        vm.recordLogs();
         bytes memory data = abi.encode(address(joiner), amount_in_s, call_data);
         l2gyd.ccipReceive(
           _receivedMessage(mainnetChainSelector, l1escrow, data)
         );
-        // TODO this fails.
         vm.stopPrank();
-        // TODO ^ assert that it does NOT emit the failure event.
+        _assertNoFailureEvents();
 
         // After this, everything should look just like above:
 
@@ -120,6 +121,58 @@ contract OneSidedECLPJoinerLiveTest is Test {
         console.log("Total undeployed GYD", undeployed_gyd);
         console.log("Bp/100 undeployed (approximate)", divDown(undeployed_gyd, amount_in_s) * 1e6 / 1e18);
         assertLe(undeployed_gyd, mulDown(amount_in_s, MAX_UNDEPLOYED_PERCENTAGE));
+    }
+
+    /// @notice Test graceful failure of the CCIP variant when a bad pool address is provided.
+    /// NB We can't really test any other failure b/c we don't know how that would arise.
+    // SOMEDAY actually we can donate a gazillion tokens to the pool so it can't do its final swap.
+    function testExecutionCCIPBadPool() public {
+        uint256 amount_in_s = 1e6 * 1e18;
+
+        bytes memory call_data = abi.encodeWithSelector(
+            joiner.joinECLPOneSidedCCIP.selector,
+            bad_bootstrapping_pool_addr,
+            address(l2gyd),
+            alice
+        );
+
+        vm.startPrank(router);
+
+        // Cursed. (this is to assert emission of an event in the next call)
+        // SOMEDAY check the error message
+        vm.expectEmit(true, false, false, false, address(joiner));
+        emit IOneSidedECLPJoiner.ExecutionFailed(bytes("stfu"), alice);
+
+        bytes memory data = abi.encode(address(joiner), amount_in_s, call_data);
+        l2gyd.ccipReceive(
+          _receivedMessage(mainnetChainSelector, l1escrow, data)
+        );
+        vm.stopPrank();
+
+        // Now make sure no tokens are lost.
+        IERC20 lp_token = IERC20(bootstrapping_pool_addr);
+        IERC20 gyd_token = IERC20(address(l2gyd));
+        IERC20 other_token = IERC20(other_token_addr);
+
+        // joiner has no tokens left
+        assertEq(lp_token.balanceOf(address(joiner)), 0);
+        assertEq(gyd_token.balanceOf(address(joiner)), 0);
+        assertEq(other_token.balanceOf(address(joiner)), 0);
+        
+        // alice now has only GYD
+        assertEq(lp_token.balanceOf(alice), 0);
+        assertEq(other_token.balanceOf(alice), 0);
+        assertEq(gyd_token.balanceOf(alice), amount_in_s);
+    }
+
+    function _assertNoFailureEvents() internal {
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 badSig1 = keccak256("ExecutionFailed(string,address)");
+        bytes32 badSig2 = keccak256("ExecutionFailed(bytes,address)");
+        for (uint256 i = 0; i < entries.length; ++i) {
+            assertNotEq(entries[i].topics[0], badSig1);
+            assertNotEq(entries[i].topics[0], badSig2);
+        }
     }
 
     function _receivedMessage(
