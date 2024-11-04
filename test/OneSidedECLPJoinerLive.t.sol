@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../lib/gyro-pools/IOneSidedECLPJoiner.sol";
-import "../src/L2GYD.sol";
+import "../src/L2Gyd.sol";
 import {IERC20} from "oz/token/ERC20/IERC20.sol";
 
 contract OneSidedECLPJoinerLiveTest is Test {
