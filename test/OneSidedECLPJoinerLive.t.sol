@@ -7,6 +7,8 @@ import "../src/L2Gyd.sol";
 import {IERC20} from "oz/token/ERC20/IERC20.sol";
 
 contract OneSidedECLPJoinerLiveTest is Test {
+    using stdStorage for StdStorage;
+
     IOneSidedECLPJoiner joiner = IOneSidedECLPJoiner(0xA0a555c1c11ef36D2381768EB734Fa2bddf1322b);
     L2Gyd l2gyd = L2Gyd(0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8);
 
@@ -125,7 +127,6 @@ contract OneSidedECLPJoinerLiveTest is Test {
 
     /// @notice Test graceful failure of the CCIP variant when a bad pool address is provided.
     /// NB We can't really test any other failure b/c we don't know how that would arise.
-    // SOMEDAY actually we can donate a gazillion tokens to the pool so it can't do its final swap.
     function testExecutionCCIPBadPool() public {
         uint256 amount_in_s = 1e6 * 1e18;
 
@@ -162,6 +163,63 @@ contract OneSidedECLPJoinerLiveTest is Test {
         // alice now has only GYD
         assertEq(lp_token.balanceOf(alice), 0);
         assertEq(other_token.balanceOf(alice), 0);
+        assertEq(gyd_token.balanceOf(alice), amount_in_s);
+    }
+
+    /// @notice Test graceful failure of the CCIP variant when one of the pool operations fails.
+    /// Here we donate a lot of the `other_token` to the pool so that the final swap fails.
+    function testExecutionCCIPBadSwap() public {
+        // Evil store magic
+        uint256 big_other_token_amount = 1e9 * 1e6;
+        IERC20 other_token = IERC20(other_token_addr);
+        stdstore
+            .target(other_token_addr)
+            .sig(other_token.balanceOf.selector)
+            .with_key(address(joiner))
+            .checked_write(big_other_token_amount);
+        assertEq(other_token.balanceOf(address(joiner)), big_other_token_amount);
+
+        uint256 amount_in_s = 1e6 * 1e18;
+
+        bytes memory call_data = abi.encodeWithSelector(
+            joiner.joinECLPOneSidedCCIP.selector,
+            bootstrapping_pool_addr,
+            address(l2gyd),
+            alice
+        );
+
+        vm.startPrank(router);
+
+        // Cursed. (this is to assert emission of an event in the next call)
+        // SOMEDAY check the error message
+        // It's "GYR#357" aka ASSET_BOUNDS_EXCEEDED.
+        vm.expectEmit(true, false, false, false, address(joiner));
+        // for some reason, this failure case raises the string error but the one above raises
+        // the bytes one.
+        emit IOneSidedECLPJoiner.ExecutionFailed(string("stfu"), alice);
+
+        bytes memory data = abi.encode(address(joiner), amount_in_s, call_data);
+        l2gyd.ccipReceive(
+          _receivedMessage(mainnetChainSelector, l1escrow, data)
+        );
+        vm.stopPrank();
+
+        // Now make sure no tokens are lost.
+        IERC20 lp_token = IERC20(bootstrapping_pool_addr);
+        IERC20 gyd_token = IERC20(address(l2gyd));
+        // IERC20 other_token = IERC20(other_token_addr);
+
+        // joiner has no tokens left
+        assertEq(lp_token.balanceOf(address(joiner)), 0);
+        assertEq(gyd_token.balanceOf(address(joiner)), 0);
+        assertEq(other_token.balanceOf(address(joiner)), 0);
+
+        // The last swap failed and all tokens were transferred to alice.
+        // No join took place b/c it was rolled back.
+        // Note that also all of the other_token is sent to alice, so the contract is free next
+        // time.
+        assertEq(lp_token.balanceOf(alice), 0);
+        assertEq(other_token.balanceOf(alice), big_other_token_amount);
         assertEq(gyd_token.balanceOf(alice), amount_in_s);
     }
 
