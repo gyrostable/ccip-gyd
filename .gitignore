@@ -12,3 +12,6 @@ docs/
 
 # Dotenv file
 .env
+
+# Hardhat (which we used for some verification exercise I think)
+node_modules/
