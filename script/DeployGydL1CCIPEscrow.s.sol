@@ -38,9 +38,9 @@ contract DeployGydL1CCIPEscrow is Script {
 
   uint256 gasLimit = 200_000; // max 200k gas to complete the bridging
 
-  uint256 capacity = 100_000; // max 100k GYD at once
+  uint256 capacity = 100_000e18; // max 100k GYD at once
 
-  uint256 refillRate = 10; // 1 GYD per second
+  uint256 refillRate = 10e18; // 10 GYD per second
 
   // CREATE3 Factory
   ICREATE3Factory factory =

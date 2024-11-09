@@ -52,8 +52,8 @@ library CCIPHelpers {
     IGydBridge.RateLimitData memory rateLimit,
     IGydBridge.ChainMetadata memory chainMeta
   ) internal view returns (IGydBridge.RateLimitData memory) {
-    uint256 ellapsedSinceReplenish = block.timestamp - rateLimit.lastRefill;
-    uint256 amountToReplenish = ellapsedSinceReplenish * chainMeta.refillRate;
+    uint256 elapsedSinceReplenish = block.timestamp - rateLimit.lastRefill;
+    uint256 amountToReplenish = elapsedSinceReplenish * chainMeta.refillRate;
     uint256 available = rateLimit.available + amountToReplenish;
     if (available > chainMeta.capacity) {
       available = chainMeta.capacity;
