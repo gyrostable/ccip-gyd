@@ -38,6 +38,10 @@ contract DeployGydL1CCIPEscrow is Script {
 
   uint256 gasLimit = 200_000; // max 200k gas to complete the bridging
 
+  uint256 capacity = 100_000; // max 100k GYD at once
+
+  uint256 refillRate = 10; // 1 GYD per second
+
   // CREATE3 Factory
   ICREATE3Factory factory =
     ICREATE3Factory(0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1);
@@ -60,7 +64,9 @@ contract DeployGydL1CCIPEscrow is Script {
       chainSelector: arbitrumChainSelector,
       metadata: IGydBridge.ChainMetadata({
         targetAddress: l2Address,
-        gasLimit: gasLimit
+        gasLimit: gasLimit,
+        capacity: capacity,
+        refillRate: refillRate
       })
     });
 
