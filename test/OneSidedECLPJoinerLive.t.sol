@@ -10,6 +10,8 @@ contract OneSidedECLPJoinerLiveTest is Test {
     using stdStorage for StdStorage;
 
     IOneSidedECLPJoiner joiner = IOneSidedECLPJoiner(0xA0a555c1c11ef36D2381768EB734Fa2bddf1322b);
+    // New version, benefits unclear:
+    // IOneSidedECLPJoiner joiner = IOneSidedECLPJoiner(0xEEf937f14f4B536c82a802962484a0D4183a34e5);
     L2Gyd l2gyd = L2Gyd(0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8);
 
     address alice = makeAddr("alice");
@@ -29,6 +31,8 @@ contract OneSidedECLPJoinerLiveTest is Test {
         // Fork arbitrum.
         // Block from: Mon Nov  4 16:57:12 CET 2024
         vm.createSelectFork(vm.envString("ARBITRUM_RPC_URL"), 270993705);
+        // Block from: Nov 21 22:50 CET
+        // vm.createSelectFork(vm.envString("ARBITRUM_RPC_URL"), 276919546);
     }
 
     function testExecutionNormal1() public {
