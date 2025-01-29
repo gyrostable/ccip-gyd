@@ -33,10 +33,10 @@ contract DeployGyfiL1CCIPEscrow is Script {
   address l2Address;
 
   // Arbitrum chain selector
-  // https://docs.chain.link/ccip/supported-networks/v1_2_0/mainnet#arbitrum-mainnet
+  // https://docs.chain.link/ccip/directory/mainnet/chain/ethereum-mainnet-arbitrum-1
   uint64 arbitrumChainSelector = 4_949_039_107_694_359_620;
 
-  uint256 gasLimit = 200_000; // max 200k gas to complete the bridging
+  uint256 gasLimit = 500_000; // max 200k gas to complete the bridging
 
   // CREATE3 Factory
   ICREATE3Factory factory =
@@ -47,9 +47,10 @@ contract DeployGyfiL1CCIPEscrow is Script {
   }
 
   function run() public returns (address proxy) {
-    uint256 deployerPrivateKey = uint256(vm.envBytes32("PRIVATE_KEY"));
+    bytes32 salt = keccak256(bytes("GyfiL1CCIPEscrow"));
+    address expectedAddress = factory.getDeployed(deployer, salt);
 
-    vm.startBroadcast(deployerPrivateKey);
+    vm.startBroadcast();
 
     GyfiL1CCIPEscrow gyfiL1Escrow = new GyfiL1CCIPEscrow();
 
@@ -67,11 +68,13 @@ contract DeployGyfiL1CCIPEscrow is Script {
     bytes memory data = abi.encodeWithSelector(
       GyfiL1CCIPEscrow.initialize.selector, admin, gyfi, ccipRouter, chains
     );
-    bytes32 salt = keccak256(bytes("GyfiL1CCIPEscrow"));
     bytes memory creationCode = abi.encodePacked(
       type(UUPSProxy).creationCode, abi.encode(address(gyfiL1Escrow), data)
     );
     proxy = factory.deploy(salt, creationCode);
+    if (proxy != expectedAddress) {
+      revert("Wrong address, use gyro foundation deployer");
+    }
 
     vm.stopBroadcast();
   }
