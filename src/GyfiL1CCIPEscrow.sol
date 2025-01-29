@@ -201,18 +201,18 @@ contract GyfiL1CCIPEscrow is
     internal
     override
   {
-    address expectedSender =
-      chainsMetadata[any2EvmMessage.sourceChainSelector].targetAddress;
-    if (expectedSender == address(0)) {
-      revert ChainNotSupported(any2EvmMessage.sourceChainSelector);
-    }
+    uint64 chainSelector = any2EvmMessage.sourceChainSelector;
+    ChainMetadata memory chainMeta = chainsMetadata[chainSelector];
+    address expectedSender = chainMeta.targetAddress;
+
+    if (expectedSender == address(0)) revert ChainNotSupported(chainSelector);
+
     address actualSender = abi.decode(any2EvmMessage.sender, (address));
-    if (expectedSender != actualSender) {
-      revert MessageInvalid();
-    }
+    if (expectedSender != actualSender) revert MessageInvalid();
 
     (address recipient, uint256 amount, bytes memory data) =
       abi.decode(any2EvmMessage.data, (address, uint256, bytes));
+
     uint256 bridged = totalBridgedGYFI;
     bridged -= amount;
     totalBridgedGYFI = bridged;

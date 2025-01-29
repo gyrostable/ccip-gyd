@@ -187,15 +187,14 @@ contract L2Gyfi is
     internal
     override
   {
-    ChainMetadata memory chainMeta =
-      chainsMetadata[any2EvmMessage.sourceChainSelector];
+    uint64 chainSelector = any2EvmMessage.sourceChainSelector;
+    ChainMetadata memory chainMeta = chainsMetadata[chainSelector];
     address actualSender = abi.decode(any2EvmMessage.sender, (address));
-    if (actualSender != chainMeta.targetAddress) {
-      revert MessageInvalid();
-    }
+    if (actualSender != chainMeta.targetAddress) revert MessageInvalid();
 
     (address recipient, uint256 amount, bytes memory data) =
       abi.decode(any2EvmMessage.data, (address, uint256, bytes));
+
     _mint(recipient, amount);
     if (data.length > 0) {
       recipient.functionCall(data);
