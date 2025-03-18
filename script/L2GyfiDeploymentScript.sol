@@ -46,9 +46,11 @@ contract L2GyfiDeploymentScript is Script {
     bytes memory data = abi.encodeWithSelector(
       L2Gyfi.initialize.selector, owner, ccipRouter, chains
     );
-    bytes memory creationCode = abi.encodePacked(
-      type(UUPSProxy).creationCode, abi.encode(address(l2Gyfi), data)
-    );
+    bytes memory constructorArgs = abi.encode(address(l2Gyfi), data);
+    console.log("constructorArgs");
+    console.logBytes(constructorArgs);
+    bytes memory creationCode =
+      abi.encodePacked(type(UUPSProxy).creationCode, constructorArgs);
     proxy = factory.deploy(salt, creationCode);
     if (proxy != l2GyfiAddress) {
       revert("Wrong address, use gyro foundation deployer");

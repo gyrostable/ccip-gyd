@@ -76,7 +76,15 @@ Deployment scripts are located in the [`script`](./script/) directory.
 | L2Gyd               | Gnosis        | [0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8](https://gnosisscan.io/address/0xCA5d8F8a8d49439357d3CF46Ca2e720702F132b8)   |
 | GyfiL1CCIPEscrow    | Mainnet       | [0x2154F6242F2F7B82A88E7C912dc0aA644F557061](https://etherscan.io/address/0x2154F6242F2F7B82A88E7C912dc0aA644F557061)  |
 | L2Gyfi              | Arbitrum      | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://arbiscan.io/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
-| L2Gyfi              | Base      | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://basescan.org/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Base          | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://basescan.org/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Avalanche     | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://snowtrace.io/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Optimism      | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://optimistic.etherscan.io/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Polygon       | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://polygonscan.com/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Sonic         | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://sonicscan.org/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Sei           | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://seitrace.com/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | Gnosis        | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://gnosisscan.io/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+| L2Gyfi              | zkEVM         | [0xc63529297dE076eB15fcbE873AE9136E446cFbB9](https://zkevm.polygonscan.com/address/0xc63529297dE076eB15fcbE873AE9136E446cFbB9)   |
+
 
 
 # How to bridge GYD manually: Ethereum ↔ Arbitrum
