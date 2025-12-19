@@ -110,6 +110,7 @@ To indicate the target L2 chain, CCIP does not use chain IDs but instead its own
 | polygon      | 4051577828743386545  |
 | base         | 15971525489660198786 |
 | gnosis       | 465200170687744372   |
+| bnb chain    | 11344663589394136015 |
 
 ## Bridging from Ethereum to Arbitrum
 
