@@ -204,4 +204,8 @@ contract L2Gyfi is
       any2EvmMessage.sourceChainSelector, recipient, amount, totalSupply()
     );
   }
+
+  function _update(address, address, uint256) internal pure override {
+    revert("Transfer paused temporarily");
+  }
 }
