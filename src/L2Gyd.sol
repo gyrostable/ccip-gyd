@@ -203,4 +203,8 @@ contract L2Gyd is
 
     emit GYDClaimed(chainSelector, recipient, amount, totalSupply());
   }
+
+  function _update(address, address, uint256) internal pure override {
+    revert("Transfer paused temporarily");
+  }
 }
